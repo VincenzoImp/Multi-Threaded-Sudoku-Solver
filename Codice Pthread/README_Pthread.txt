@@ -1,0 +1,10 @@
+- il seguente algoritmo svolge una visita in dfs dell'albero delle possibili soluzioni del sudoku dato in partenza
+- nella visita in dfs l'algoritmo fa uso di un numero di thread dato in partenza
+- i thread partono nello stato di idle validator, ovvero sono disponibili per svolgere il lavoro di validatore
+- successivamente diventano active validator quando ci sara' un qualche delegator che li sveglia. gli active validato threads svogono la validazione del sudoku a loro assegnato
+- durante la validazione si troveranno a dover compilare una cella vuota con uno o piu' possibili numeri validi in quella cella, generando cosi' nuove varianti di sudoku da validare
+- quindi qualora ci fossero dei idle validator threads, l'active validator thread che riesce a leggere la FIFO dei idle validator threads, diventa delegator e delega quanto piu' possibile, le nuove varianti di sudoku da risolvere ai idle validator threads, facendoli diventare active validator threads
+- il thread continua a svolgere le varianti di sudoku che non e' riuscito a delegare
+- quando un thread compila tutte le celle di un sudoku in modo valido notifica che un sudoku e' stato rislto e lo copia nel sudoku che rappresenta la soluzione
+- quando un thread si accorge che e' stata trovata una soluzione, allora si accinge a terminare
+- una volte che i thread hanno svolto la dfs trovando una soluzione, si procede a stamparla in output

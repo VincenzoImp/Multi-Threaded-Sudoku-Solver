@@ -1,0 +1,8 @@
+-Il seguente codice utilizza una Breadth-First Search (BFS) per cercare tra tutte le possibili computazioni del sudoku la soluzione;
+-In ogni ramo di computazione viene fatta ogni possibile scelta, inserendo numeri accettati in celle vuote e continuando da lì la computazione;
+-Per riuscire in questa BFS l'algoritmo alloca due liste di sudoku (list e new_list), e alla fine di ogni ciclo di while il contenuto di new_list (ovvero i sudoku al livello di computazione attuale) viene inserito in list, e la memoria di new_list viene liberata;
+-All'inizio il contenuto di new_list consiste solo nel primo sudoku;
+-Entra nel while e inserisce (nel for) in new_list ogni possibile sudoku per ogni possibile numero inseribile nelle celle vuote al livello 1 di computazione (ovvero con una sola cella vuota in meno);
+-Ad ogni ciclo di for si controlla se il sudoku è stato risolto attraverso un indice di riferimento, se non è risolto si rimane nel while;
+-Quando finalmente il sudoku sarà stato risolto, verrà modificato il sudoku originale sostituendolo con quello risolto;
+-Il codice stampa il sudoku originale seguito dal sudoku risolto, e il tempo che ha impiegato per risolverlo.
