@@ -33,8 +33,6 @@ This solution uses a **Depth-First Search (DFS)** traversal approach. The algori
 
 This method is best suited for puzzles where the solution lies deeper in the search tree, and the number of threads is relatively small.
 
----
-
 ## 2. Sudoku Solver with Pthread - Hybrid DFS/BFS
 
 The hybrid approach builds upon the classic DFS model by allowing **multi-delegation**. This enhances the DFS strategy and introduces **breadth-first search (BFS)** behavior by enabling delegator threads to assign multiple Sudoku puzzles at once. 
@@ -45,8 +43,6 @@ The hybrid approach builds upon the classic DFS model by allowing **multi-delega
 - **Improved Scalability**: This variant provides better throughput by parallelizing more tasks, making it more suitable for puzzles of varying depths.
 
 This approach introduces a slight increase in synchronization complexity due to multi-delegation, but it allows for more efficient use of resources when handling puzzles with mixed difficulty levels.
-
----
 
 ## 3. Sudoku Solver with OpenMP - BFS
 
@@ -64,8 +60,6 @@ This solution implements a **Breadth-First Search (BFS)** approach using OpenMP 
 - **new_index_list**: Index into `new_list`.
 
 While BFS is easy to parallelize, it suffers from **high memory usage** as the depth of the search tree increases. This approach is best suited for shallow puzzles where solutions can be found quickly.
-
----
 
 ## Comparative Analysis
 
@@ -85,8 +79,6 @@ The three approaches exhibit varying strengths and weaknesses depending on puzzl
 - **Pthread DFS** is ideal for deeply nested solutions where memory usage is a concern, and the recursive nature of DFS is beneficial.
 - **Hybrid DFS/BFS** provides the best **customizability** and **parallel efficiency**, especially when dealing with puzzles of varying difficulty.
 - **OpenMP BFS** is efficient for simpler puzzles where the solution is near the root, but becomes less efficient in terms of memory usage for more complex puzzles.
-
----
 
 ## Conclusion
 
