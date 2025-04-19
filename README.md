@@ -1,23 +1,22 @@
-# Abstract
 
-This document presents a multithreaded approach to solving 9x9 Sudoku puzzles using Pthread and OpenMP libraries. Three solutions are discussed: two based on Pthread and one based on OpenMP. The first Pthread-based solution implements a fully recursive depth-first search (DFS) approach in parallel. The second, also with Pthread, is a hybrid variation that retains the DFS structure but introduces partial breadth-first search (BFS) behavior by allowing multiple task delegations. The third solution, implemented with OpenMP, follows a BFS strategy and parallelizes where possible.
+## Introduction
 
-This document describes the architecture of all three solutions, the encountered issues and limitations, and reports on performance tests conducted using a shared dataset of 9x9 Sudoku puzzles. All puzzles in the dataset have a unique solution. The multithreaded solutions are compared with each other and with a sequential baseline.
+This report investigates and compares three parallel approaches for solving 9x9 Sudoku puzzles with a unique solution, utilizing multithreading to speed up the solution process. The methods include two Pthread-based approaches (one classic DFS and one hybrid DFS/BFS) and an OpenMP-based BFS approach. Each solution leverages parallelism in different ways to address the challenge of Sudoku puzzle-solving.
 
----
+The first Pthread-based solution implements a fully recursive depth-first search (DFS) approach in parallel. The second, a hybrid Pthread solution, introduces partial breadth-first search (BFS) behavior by allowing multiple task delegations while retaining the DFS structure. The third solution, implemented with OpenMP, follows a BFS strategy and parallelizes where possible.
+
+This document compares the three methods in terms of performance, scalability, and memory usage, describing their key features, advantages, and limitations. The solutions are tested using a shared dataset of 9x9 Sudoku puzzles with unique solutions. The goal is to understand the trade-offs between the methods based on puzzle complexity and the number of available threads.
 
 ## 1. Sudoku Solver with Pthread - Classic DFS
 
-This solution is based on a recursive depth-first search (DFS) traversal. DFS explores the entire solution tree for the given Sudoku puzzle and is advantageous when the solution lies deep in the tree (as opposed to BFS, which performs better for shallow solutions).
+This solution uses a **Depth-First Search (DFS)** traversal approach. The algorithm performs a DFS on the possible Sudoku configurations, using a user-defined number of threads. The goal is to find the valid solution by distributing the computational workload among threads in parallel.
 
-The algorithm performs a DFS on the possible Sudoku configurations, using a user-defined number of threads. The goal is to find the unique valid solution by distributing the computational workload among threads in parallel.
-
-At initialization, the algorithm receives the number of threads and the Sudoku puzzle to solve. During input parsing, the empty cells are identified and stored in a list to avoid redundant grid reads.
-
-> *During optimization, we experimented with shuffling the order of empty cells, but keeping a linear order proved more effective.*
+### Key Features
+- **DFS Approach**: DFS is effective when the solution lies deeper in the tree.
+- **Threads**: Each thread explores different paths recursively.
+- **Shared Data Structures**: Uses semaphores, mutexes, and a shared FIFO queue to manage idle and active threads.
 
 ### Key Variables
-
 - **problem_solved**: Flag indicating whether a valid solution has been found.
 - **sudokus_to_solve**: Array of Sudoku puzzles pending validation.
 - **semaphores**: Array of semaphores, one per thread.
@@ -26,67 +25,70 @@ At initialization, the algorithm receives the number of threads and the Sudoku p
 - **mutex_solved_sudoku**: Mutex protecting access to the solved Sudoku.
 - **solved_sudoku**: Structure that holds the valid solution.
 
-### Thread States
+### Thread Roles
+- **Idle Validator**: Thread waiting for work. It is pushed into a shared FIFO and blocked on a semaphore until activated.
+- **Active Validator**: A working thread performing DFS to validate and solve a Sudoku instance. It can request to offload subtasks.
+- **Delegator**: A special Active Validator that identifies Idle Validators and delegates one or more Sudoku branches for concurrent exploration.
 
-- **Idle Validator**: Thread waiting for work.
-- **Active Validator**: Thread actively validating a Sudoku configuration.
-- **Delegator**: An Active Validator that may delegate part of its work to an Idle Validator.
-
-![Possible thread states](Latex/stati%20thread.png)
-
-Execution begins with all threads in the Idle Validator state. One thread receives the initial puzzle and becomes an Active Validator. As threads generate new configurations (by inserting valid digits in empty cells), they check if any Idle Validators are available and, if so, delegate a new Sudoku puzzle for validation.
-
-The process continues until one thread successfully completes a valid Sudoku. The result is saved, and the `problem_solved` flag is set to `true`, signaling all threads to stop.
+This method is best suited for puzzles where the solution lies deeper in the search tree, and the number of threads is relatively small.
 
 ---
 
-## 2. Sudoku Solver with Pthread - Hybrid DFS/BFS Variant
+## 2. Sudoku Solver with Pthread - Hybrid DFS/BFS
 
-This solution builds upon the classic DFS model, introducing the possibility for Delegator threads to delegate multiple Sudoku puzzles at once. This behavior emulates a breadth-first search (BFS) while retaining the structure and mechanisms of DFS.
+The hybrid approach builds upon the classic DFS model by allowing **multi-delegation**. This enhances the DFS strategy and introduces **breadth-first search (BFS)** behavior by enabling delegator threads to assign multiple Sudoku puzzles at once. 
 
-The maximum number of concurrent delegations is configurable. Increasing this value enhances the BFS-like behavior, improving performance when solutions are found in the upper levels of the solution tree.
+### Key Features
+- **Hybrid DFS/BFS**: Allows deeper levels to be expanded in breadth when idle threads are available.
+- **Tunable Parallelism**: The number of delegations can be configured, making the approach adaptable to puzzle complexity.
+- **Improved Scalability**: This variant provides better throughput by parallelizing more tasks, making it more suitable for puzzles of varying depths.
 
-Thread architecture remains unchanged. The key difference lies in the Delegator behavior: if multiple puzzles are ready to be validated, the Delegator can distribute them to several Idle Validators in a single batch.
-
-> *This strategy showed strong results in testing, enabling better scalability for simpler cases while maintaining solid performance for more complex ones.*
+This approach introduces a slight increase in synchronization complexity due to multi-delegation, but it allows for more efficient use of resources when handling puzzles with mixed difficulty levels.
 
 ---
 
 ## 3. Sudoku Solver with OpenMP - BFS
 
-This solution follows a pure BFS approach, leveraging OpenMP to parallelize computation. BFS is particularly effective when the puzzle's solution lies near the top of the search tree.
+This solution implements a **Breadth-First Search (BFS)** approach using OpenMP for parallelism. The algorithm expands each level of the Sudoku solution tree in parallel, with each thread working on different configurations at each level.
 
-The algorithm maintains two lists:
-
-- `list`: containing the puzzles to be expanded.
-- `new_list`: which stores the puzzles generated in the next level of the tree.
-
-Parallel operations occur primarily during the double loop that generates `new_list`, where each puzzle in `list` may generate multiple children.
+### Key Features
+- **BFS Approach**: BFS is effective when the solution is near the top of the search tree, making it ideal for simpler puzzles.
+- **Parallel Expansion**: The BFS method generates configurations level by level, with each level expanded in parallel using OpenMP's `#pragma omp parallel for`.
 
 ### Key Variables
-
 - **solved_sudoku**: Flag indicating whether a valid solution has been found.
 - **list**: List of puzzles to explore.
 - **index_list**: Index into `list`.
 - **new_list**: Puzzles generated at the next level.
 - **new_index_list**: Index into `new_list`.
 
-The main advantage of this method is its ease of parallelization. However, if the solution lies deep in the tree, BFS suffers from high memory consumption due to the large number of partial configurations it must manage.
+While BFS is easy to parallelize, it suffers from **high memory usage** as the depth of the search tree increases. This approach is best suited for shallow puzzles where solutions can be found quickly.
 
 ---
 
-## 4. Comparison of Solutions
+## Comparative Analysis
 
-The three solutions behave differently depending on the complexity of the puzzle and the depth at which the solution is located:
+The three approaches exhibit varying strengths and weaknesses depending on puzzle complexity, solution depth, and available parallelism. Below is a comparison of the methods:
 
-- The **pure DFS with Pthreads** is effective for deep solutions due to its recursive nature.
-- The **hybrid DFS/BFS variant** provides a good balance between memory usage and parallelization, adapting well to different cases.
-- The **OpenMP BFS approach** performs best on simpler puzzles or those with shallow solutions, but becomes inefficient in terms of memory for more complex cases.
+| Feature / Method        | Pthread DFS      | Hybrid DFS/BFS      | OpenMP BFS         |
+|-------------------------|------------------|---------------------|--------------------|
+| **Traversal Type**       | DFS              | DFS with BFS option | BFS                |
+| **Threading Model**      | Manual (Pthreads)| Manual (Pthreads)   | Shared (OpenMP)    |
+| **Delegation**           | 1-at-a-time      | Configurable        | Full level parallel|
+| **Load Balancing**       | Manual via FIFO  | Adaptive            | Implicit via loop  |
+| **Memory Usage**         | Low              | Moderate            | High (deep levels) |
+| **Best For**             | Hard puzzles     | Mixed difficulty    | Easy puzzles       |
+| **Complexity**           | Medium           | High (more sync)    | Low (easy setup)   |
 
-In tests performed on a mixed dataset of Sudoku puzzles with increasing difficulty, the hybrid solution demonstrated the most balanced performance overall, making the best use of hardware resources in heterogeneous scenarios.
+### Key Takeaways:
+- **Pthread DFS** is ideal for deeply nested solutions where memory usage is a concern, and the recursive nature of DFS is beneficial.
+- **Hybrid DFS/BFS** provides the best **customizability** and **parallel efficiency**, especially when dealing with puzzles of varying difficulty.
+- **OpenMP BFS** is efficient for simpler puzzles where the solution is near the root, but becomes less efficient in terms of memory usage for more complex puzzles.
 
 ---
 
-## 5. Conclusion
+## Conclusion
 
-This project demonstrated how the choice of parallelization strategy significantly affects the performance of a Sudoku-solving algorithm. The pure DFS version offers a solid foundation, while the hybrid extension delivers tangible benefits in versatility. The BFS approach, though easy to parallelize with OpenMP, suffers in memory usage when solving complex puzzles. Together, the three solutions provide a comprehensive overview of multithreading potential in search-based problem-solving.
+This project demonstrates how the choice of parallelization strategy can significantly impact the performance of a Sudoku-solving algorithm. The **pure DFS** approach provides a solid foundation for deeply nested solutions, while the **hybrid DFS/BFS** model strikes a good balance between memory usage and parallel efficiency, making it suitable for a wide range of puzzles. The **OpenMP BFS** approach excels in simplicity and speed for shallow puzzles but suffers from memory overhead as the problem complexity increases.
+
+The **hybrid Pthread** solution stands out as the most versatile and scalable approach, offering the best trade-off between memory usage, parallel efficiency, and adaptability to different puzzle complexities.
