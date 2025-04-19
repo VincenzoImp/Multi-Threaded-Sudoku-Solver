@@ -32,7 +32,7 @@ At initialization, the algorithm receives the number of threads and the Sudoku p
 - **Active Validator**: Thread actively validating a Sudoku configuration.
 - **Delegator**: An Active Validator that may delegate part of its work to an Idle Validator.
 
-![Possible thread states](stati%20thread.png)
+![Possible thread states](Latex/stati%20thread.png)
 
 Execution begins with all threads in the Idle Validator state. One thread receives the initial puzzle and becomes an Active Validator. As threads generate new configurations (by inserting valid digits in empty cells), they check if any Idle Validators are available and, if so, delegate a new Sudoku puzzle for validation.
 
