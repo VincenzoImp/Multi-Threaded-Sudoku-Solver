@@ -1,3 +1,4 @@
+# Parallel Sudoku Solver
 
 ## Introduction
 
